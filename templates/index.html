@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ETF Tracker</title>
+<link rel="stylesheet" href="/static/css/style.css">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="auth-screen" class="screen active">
+  <div class="auth-bg">
+    <div class="auth-card">
+      <div class="auth-logo"><span class="logo-icon">◈</span><span class="logo-text">ETF Tracker</span></div>
+      <h1 class="auth-title">Benvenuto</h1>
+      <p class="auth-sub">Il tuo portafoglio ETF, intelligente e semplice.</p>
+      <div class="auth-form">
+        <div class="field-group"><label>Email</label><input type="email" id="auth-email" placeholder="mario@esempio.it"></div>
+        <div class="field-group"><label>Password</label><input type="password" id="auth-password" placeholder="••••••••" onkeydown="if(event.key==='Enter')doLogin()"></div>
+        <button class="btn-primary btn-full" onclick="doLogin()">Accedi</button>
+        <p class="auth-hint">Demo: inserisci qualsiasi email per accedere</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app-screen" class="screen">
+  <header class="app-header">
+    <div class="header-inner">
+      <div class="header-top">
+        <div class="header-logo"><span class="logo-icon">◈</span><span class="logo-text">ETF Tracker</span></div>
+        <div class="header-right">
+          <div class="avatar-wrap" onclick="toggleAvatarMenu()">
+            <div class="avatar" id="user-avatar">U</div>
+            <div id="avatar-menu" class="avatar-menu hidden">
+              <div class="avatar-menu-header"><p id="am-name">Utente</p><p id="am-email" class="am-email-text"></p></div>
+              <button onclick="navigate('settings');closeAvatarMenu()">Impostazioni</button>
+              <button onclick="doLogout()" class="am-logout">Esci</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <nav class="main-nav" id="main-nav">
+        <button class="nav-btn active" data-page="dashboard" onclick="navigate('dashboard')">🏠 Dashboard</button>
+        <button class="nav-btn" data-page="portfolio" onclick="navigate('portfolio')">📊 Portafoglio</button>
+        <button class="nav-btn" data-page="search" onclick="navigate('search')">🔍 Cerca ETF</button>
+        <button class="nav-btn" data-page="models" onclick="navigate('models')">📐 Modelli</button>
+        <button class="nav-btn" data-page="simulations" onclick="navigate('simulations')">🎲 Simulazioni</button>
+        <button class="nav-btn" data-page="alerts" onclick="navigate('alerts')">🔔 Alerting</button>
+        <button class="nav-btn" data-page="community" onclick="navigate('community')">👥 Community</button>
+        <button class="nav-btn" data-page="academy" onclick="navigate('academy')">📚 Impara</button>
+      </nav>
+    </div>
+  </header>
+
+  <main class="page-main">
+
+    <!-- DASHBOARD -->
+    <div id="page-dashboard" class="page active">
+      <div class="page-header"><h2>Dashboard</h2><button class="btn-primary" onclick="navigate('search')">+ Aggiungi ETF</button></div>
+      <div class="kpi-grid">
+        <div class="kpi-card"><p class="kpi-label">Valore Totale</p><p class="kpi-value" id="kpi-total">—</p><p class="kpi-sub" id="kpi-day"></p></div>
+        <div class="kpi-card"><p class="kpi-label">Capitale Investito</p><p class="kpi-value" id="kpi-invested">—</p></div>
+        <div class="kpi-card"><p class="kpi-label">Profitto / Perdita</p><p class="kpi-value" id="kpi-pl">—</p><p class="kpi-sub" id="kpi-plp"></p></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-header">
+          <h3>Andamento Portafoglio</h3>
+          <div class="tf-btns">
+            <button class="tf-btn" onclick="setTimeframe(6,this)">6M</button>
+            <button class="tf-btn active" onclick="setTimeframe(12,this)">1A</button>
+            <button class="tf-btn" onclick="setTimeframe(36,this)">3A</button>
+            <button class="tf-btn" onclick="setTimeframe(60,this)">Max</button>
+          </div>
+        </div>
+        <div class="chart-wrap"><canvas id="portfolio-chart"></canvas></div>
+      </div>
+      <div class="two-col">
+        <div class="chart-card"><h3>Allocazione Asset</h3><div class="chart-wrap sm"><canvas id="alloc-chart"></canvas></div><div id="alloc-legend" class="legend"></div></div>
+        <div class="chart-card"><h3>Allocazione Geografica</h3><div class="chart-wrap sm"><canvas id="geo-chart"></canvas></div><div id="geo-legend" class="legend"></div></div>
+      </div>
+    </div>
+
+    <!-- PORTFOLIO -->
+    <div id="page-portfolio" class="page">
+      <div class="page-header"><h2>Il Mio Portafoglio</h2></div>
+      <div class="chart-card">
+        <h3>Holdings</h3>
+        <div class="table-wrap"><table class="data-table"><thead><tr><th>ETF</th><th>Nome</th><th>Qty</th><th>Prezzo</th><th>Valore</th><th>Peso</th><th>P&amp;L</th><th>TER</th></tr></thead><tbody id="holdings-body"></tbody></table></div>
+      </div>
+      <div class="chart-card"><h3>Matrice di Correlazione</h3><div id="corr-matrix" class="corr-matrix"></div></div>
+    </div>
+
+    <!-- SEARCH -->
+    <div id="page-search" class="page">
+      <div class="page-header"><h2>Cerca ETF</h2></div>
+      <div class="search-bar">
+        <input type="text" id="etf-search" placeholder="Cerca per ticker, nome o ISIN…" oninput="searchETFs()">
+        <select id="etf-filter-asset" onchange="searchETFs()">
+          <option value="">Tutti gli asset</option>
+          <option>Azionario</option><option>Obbligazionario</option><option>Commodities</option>
+          <option>Azionario Settoriale</option><option>Azionario ESG</option><option>Azionario Dividendi</option><option>Monetario</option>
+        </select>
+      </div>
+      <div class="table-wrap"><table class="data-table"><thead><tr><th>Ticker</th><th>Nome</th><th>Issuer</th><th>TER</th><th>AUM (M€)</th><th>Prezzo</th><th>1G%</th><th>1A%</th><th>Rating</th></tr></thead><tbody id="etf-results"></tbody></table></div>
+    </div>
+
+    <!-- ETF DETAIL -->
+    <div id="page-etf-detail" class="page">
+      <button class="back-btn" onclick="navigate('search')">← Torna alla ricerca</button>
+      <div id="etf-detail-content"></div>
+      <div class="chart-card" id="etf-chart-card" style="display:none">
+        <h3>Andamento prezzo (4 anni)</h3>
+        <div class="chart-wrap"><canvas id="etf-price-chart"></canvas></div>
+      </div>
+    </div>
+
+    <!-- MODELS -->
+    <div id="page-models" class="page">
+      <div class="page-header"><h2>Portafogli Modello</h2></div>
+      <p class="page-desc">Portafogli ideati dai più grandi investitori. Selezionali come ispirazione.</p>
+      <div class="models-grid" id="models-grid"></div>
+    </div>
+
+    <!-- MODEL DETAIL -->
+    <div id="page-model-detail" class="page">
+      <button class="back-btn" onclick="navigate('models')">← Torna ai modelli</button>
+      <div id="model-detail-content"></div>
+      <div class="chart-card" id="model-chart-card" style="display:none">
+        <h3>Allocazione</h3>
+        <div class="chart-wrap sm"><canvas id="model-alloc-chart"></canvas></div>
+      </div>
+    </div>
+
+    <!-- SIMULATIONS -->
+    <div id="page-simulations" class="page">
+      <div class="page-header"><h2>Simulazioni</h2></div>
+      <div class="two-col">
+        <div class="chart-card">
+          <h3>Parametri PAC</h3>
+          <div class="sim-params">
+            <div class="field-group"><label>Capitale iniziale (€)</label><input type="number" id="sim-capital" value="10000"></div>
+            <div class="field-group"><label>PAC mensile (€)</label><input type="number" id="sim-monthly" value="500"></div>
+            <div class="field-group"><label>Anni</label><input type="number" id="sim-years" value="20" min="1" max="50"></div>
+            <div class="field-group"><label>Rendimento atteso % p.a.</label><input type="number" id="sim-cagr" value="8"></div>
+            <div class="field-group"><label>Volatilità % p.a.</label><input type="number" id="sim-vol" value="14"></div>
+            <button class="btn-primary btn-full" onclick="runMonteCarlo()">▶ Esegui simulazione</button>
+          </div>
+        </div>
+        <div class="chart-card">
+          <h3>Monte Carlo — 300 scenari</h3>
+          <div class="chart-wrap"><canvas id="mc-chart"></canvas></div>
+          <div id="mc-results" class="mc-results hidden">
+            <div class="mc-stat"><span>Pessimista (10°pct)</span><strong id="mc-p10">—</strong></div>
+            <div class="mc-stat"><span>Mediano (50°pct)</span><strong id="mc-p50">—</strong></div>
+            <div class="mc-stat"><span>Ottimista (90°pct)</span><strong id="mc-p90">—</strong></div>
+          </div>
+        </div>
+      </div>
+      <div class="chart-card"><h3>Backtest storico (2014–2024)</h3><div class="chart-wrap"><canvas id="backtest-chart"></canvas></div></div>
+    </div>
+
+    <!-- ALERTS -->
+    <div id="page-alerts" class="page">
+      <div class="page-header"><h2>Alerting</h2></div>
+      <div id="alerts-list"></div>
+    </div>
+
+    <!-- COMMUNITY -->
+    <div id="page-community" class="page">
+      <div class="page-header"><h2>Community</h2></div>
+      <div id="community-list"></div>
+    </div>
+
+    <!-- ACADEMY -->
+    <div id="page-academy" class="page">
+      <div class="page-header"><h2>Impara</h2></div>
+      <div id="academy-list"></div>
+    </div>
+
+    <!-- SETTINGS -->
+    <div id="page-settings" class="page">
+      <div class="page-header"><h2>Impostazioni</h2></div>
+      <div class="settings-card"><h3>Profilo</h3>
+        <div class="field-group"><label>Nome</label><input type="text" id="settings-name"></div>
+        <div class="field-group"><label>Email</label><input type="email" id="settings-email" disabled></div>
+        <button class="btn-primary">Salva modifiche</button>
+      </div>
+      <div class="settings-card danger-zone"><h3>Account</h3><button class="btn-danger" onclick="doLogout()">Esci dall'account</button></div>
+    </div>
+
+  </main>
+  <footer class="app-footer"><span>© 2026 ETF Tracker</span><span>•</span><span>Solo a scopo educativo</span><span>•</span><span>🔒 Dati protetti</span></footer>
+</div>
+
+<script src="/static/js/app.js"></script>
+</body>
+</html>
